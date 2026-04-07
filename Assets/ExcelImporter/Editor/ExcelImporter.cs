@@ -14,7 +14,7 @@ public class ExcelImporter : AssetPostprocessor
 	class ExcelAssetInfo
 	{
 		public Type AssetType { get; set; }
-		public ExcelAssetAttribute Attribute { get; set; } 
+		public ExcelAssetAttribute Attribute { get; set; }
 		public string ExcelName
 		{
 			get
@@ -26,28 +26,31 @@ public class ExcelImporter : AssetPostprocessor
 
 	static List<ExcelAssetInfo> cachedInfos = null; // Clear on compile.
 
-	static void OnPostprocessAllAssets (string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
+	static void OnPostprocessAllAssets(string[] importedAssets, string[] deletedAssets, string[] movedAssets, string[] movedFromAssetPaths)
 	{
 		bool imported = false;
-		foreach(string path in importedAssets)
+		foreach (string path in importedAssets)
 		{
-			if(Path.GetExtension(path) == ".xls" || Path.GetExtension(path) == ".xlsx") 
+			if (Path.GetExtension(path) == ".xls" || Path.GetExtension(path) == ".xlsx")
 			{
-				if(cachedInfos == null) cachedInfos = FindExcelAssetInfos();
+				if (cachedInfos == null) cachedInfos = FindExcelAssetInfos();
 
 				var excelName = Path.GetFileNameWithoutExtension(path);
-				if(excelName.StartsWith("~$")) continue;
+				if (excelName.StartsWith("~$")) continue;
 
-				ExcelAssetInfo info = cachedInfos.Find(i => i.ExcelName == excelName);
+				// ExcelAssetInfo info = cachedInfos.Find(i => i.ExcelName == excelName);
+				var dirName = Path.GetFileName(Path.GetDirectoryName(path));
+				ExcelAssetInfo info = cachedInfos.Find(i => i.ExcelName == excelName)
+								  ?? cachedInfos.Find(i => i.Attribute.MatchByParentFolder && i.ExcelName == dirName);
 
-				if(info == null) continue;
+				if (info == null) continue;
 
 				ImportExcel(path, info);
 				imported = true;
 			}
 		}
 
-		if(imported) 
+		if (imported)
 		{
 			AssetDatabase.SaveAssets();
 			AssetDatabase.Refresh();
@@ -57,12 +60,12 @@ public class ExcelImporter : AssetPostprocessor
 	static List<ExcelAssetInfo> FindExcelAssetInfos()
 	{
 		var list = new List<ExcelAssetInfo>();
-		foreach(var assembly in AppDomain.CurrentDomain.GetAssemblies())
+		foreach (var assembly in AppDomain.CurrentDomain.GetAssemblies())
 		{
-			foreach(var type in assembly.GetTypes())
+			foreach (var type in assembly.GetTypes())
 			{
 				var attributes = type.GetCustomAttributes(typeof(ExcelAssetAttribute), false);
-				if(attributes.Length == 0) continue;
+				if (attributes.Length == 0) continue;
 				var attribute = (ExcelAssetAttribute)attributes[0];
 				var info = new ExcelAssetInfo()
 				{
@@ -93,7 +96,7 @@ public class ExcelImporter : AssetPostprocessor
 
 	static IWorkbook LoadBook(string excelPath)
 	{
-		using(FileStream stream = File.Open(excelPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
+		using (FileStream stream = File.Open(excelPath, FileMode.Open, FileAccess.Read, FileShare.ReadWrite))
 		{
 			if (Path.GetExtension(excelPath) == ".xls") return new HSSFWorkbook(stream);
 			else return new XSSFWorkbook(stream);
@@ -108,7 +111,7 @@ public class ExcelImporter : AssetPostprocessor
 		for (int i = 0; i < headerRow.LastCellNum; i++)
 		{
 			var cell = headerRow.GetCell(i);
-			if(cell == null || cell.CellType == CellType.Blank) break;
+			if (cell == null || cell.CellType == CellType.Blank) break;
 			fieldNames.Add(cell.StringCellValue);
 		}
 		return fieldNames;
@@ -118,7 +121,7 @@ public class ExcelImporter : AssetPostprocessor
 	{
 		var type = isFormulaEvalute ? cell.CachedFormulaResultType : cell.CellType;
 
-		switch(type)
+		switch (type)
 		{
 			case CellType.String:
 				if (fieldInfo.FieldType.IsEnum) return Enum.Parse(fieldInfo.FieldType, cell.StringCellValue);
@@ -128,10 +131,10 @@ public class ExcelImporter : AssetPostprocessor
 			case CellType.Numeric:
 				return Convert.ChangeType(cell.NumericCellValue, fieldInfo.FieldType);
 			case CellType.Formula:
-				if(isFormulaEvalute) return null;
-				return CellToFieldObject(cell, fieldInfo, true); 
+				if (isFormulaEvalute) return null;
+				return CellToFieldObject(cell, fieldInfo, true);
 			default:
-				if(fieldInfo.FieldType.IsValueType)
+				if (fieldInfo.FieldType.IsValueType)
 				{
 					return Activator.CreateInstance(fieldInfo.FieldType);
 				}
@@ -147,7 +150,7 @@ public class ExcelImporter : AssetPostprocessor
 		{
 			FieldInfo entityField = entityType.GetField(
 				columnNames[i],
-				BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic 
+				BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic
 			);
 			if (entityField == null) continue;
 			if (!entityField.IsPublic && entityField.GetCustomAttributes(typeof(SerializeField), false).Length == 0) continue;
@@ -173,20 +176,20 @@ public class ExcelImporter : AssetPostprocessor
 		List<string> excelColumnNames = GetFieldNamesFromSheetHeader(sheet);
 
 		Type listType = typeof(List<>).MakeGenericType(entityType);
-		MethodInfo listAddMethod = listType.GetMethod("Add", new Type[]{entityType});
+		MethodInfo listAddMethod = listType.GetMethod("Add", new Type[] { entityType });
 		object list = Activator.CreateInstance(listType);
 
 		// row of index 0 is header
 		for (int i = 1; i <= sheet.LastRowNum; i++)
 		{
 			IRow row = sheet.GetRow(i);
-			if(row == null) break;
+			if (row == null) break;
 
-			ICell entryCell = row.GetCell(0); 
-			if(entryCell == null || entryCell.CellType == CellType.Blank) break;
+			ICell entryCell = row.GetCell(0);
+			if (entryCell == null || entryCell.CellType == CellType.Blank) break;
 
 			// skip comment row
-			if(entryCell.CellType == CellType.String && entryCell.StringCellValue.StartsWith("#")) continue;
+			if (entryCell.CellType == CellType.String && entryCell.StringCellValue.StartsWith("#")) continue;
 
 			var entity = CreateEntityFromRow(row, excelColumnNames, entityType, sheet.SheetName);
 			listAddMethod.Invoke(list, new object[] { entity });
@@ -197,13 +200,18 @@ public class ExcelImporter : AssetPostprocessor
 	static void ImportExcel(string excelPath, ExcelAssetInfo info)
 	{
 		string assetPath = "";
-		string assetName = info.AssetType.Name + ".asset";
 
-		if(string.IsNullOrEmpty(info.Attribute.AssetPath))
+		string excelName = Path.GetFileNameWithoutExtension(excelPath);
+		// string assetName = info.AssetType.Name + ".asset";
+		string assetName = excelName + ".asset";
+
+		if (string.IsNullOrEmpty(info.Attribute.AssetPath))
 		{
 			string basePath = Path.GetDirectoryName(excelPath);
 			assetPath = Path.Combine(basePath, assetName);
-		}else{
+		}
+		else
+		{
 			var path = Path.Combine("Assets", info.Attribute.AssetPath);
 			assetPath = Path.Combine(path, assetName);
 		}
@@ -216,11 +224,11 @@ public class ExcelImporter : AssetPostprocessor
 
 		foreach (var assetField in assetFields)
 		{
-			ISheet sheet =  book.GetSheet(assetField.Name);
-			if(sheet == null) continue;
+			ISheet sheet = book.GetSheet(assetField.Name);
+			if (sheet == null) continue;
 
 			Type fieldType = assetField.FieldType;
-			if(! fieldType.IsGenericType || (fieldType.GetGenericTypeDefinition() != typeof(List<>))) continue;
+			if (!fieldType.IsGenericType || (fieldType.GetGenericTypeDefinition() != typeof(List<>))) continue;
 
 			Type[] types = fieldType.GetGenericArguments();
 			Type entityType = types[0];
@@ -230,7 +238,7 @@ public class ExcelImporter : AssetPostprocessor
 			sheetCount++;
 		}
 
-		if(info.Attribute.LogOnImport)
+		if (info.Attribute.LogOnImport)
 		{
 			Debug.Log(string.Format("Imported {0} sheets form {1}.", sheetCount, excelPath));
 		}

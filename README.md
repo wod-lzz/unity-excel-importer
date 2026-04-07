@@ -148,6 +148,24 @@ public class MstItems : ScriptableObject
 ...
 ```
 
+### Match by Parent Folder
+
+You can also match an ExcelAsset by the parent folder name by specifying MatchByParentFolder of ExcelAssetAttribute.
+
+When this option is enabled, the importer first tries to match by the Excel file name as usual. If no match is found, it falls back to the parent folder name.
+
+The parent folder name is compared with ExcelName when it is specified, or with the asset class name when ExcelName is empty.
+
+```cs
+...
+[ExcelAsset(ExcelName = "MstItems", MatchByParentFolder = true)]
+public class MstItems : ScriptableObject
+{
+...
+```
+
+For example, if an Excel file is placed under Assets/MasterData/MstItems/Weapon.xlsx, the importer can resolve MstItems from the parent folder name even though the Excel file name is Weapon.
+
 License
 ----------
 
