@@ -158,13 +158,20 @@ public class ExcelImporter : AssetPostprocessor
 		var parts = SplitVectorParts(value);
 		if (parts.Length != 2)
 		{
-			throw new FormatException(string.Format("Invalid Vector2 value '{0}'. Expected formats include {1}.", value, VectorFormatExamples));
+			throw CreateVectorFormatException("Vector2", value);
 		}
 
-		return new Vector2(
-			float.Parse(parts[0], CultureInfo.InvariantCulture),
-			float.Parse(parts[1], CultureInfo.InvariantCulture)
-		);
+		try
+		{
+			return new Vector2(
+				float.Parse(parts[0], CultureInfo.InvariantCulture),
+				float.Parse(parts[1], CultureInfo.InvariantCulture)
+			);
+		}
+		catch (FormatException)
+		{
+			throw CreateVectorFormatException("Vector2", value);
+		}
 	}
 
 	static Vector2Int ParseVector2Int(string value)
@@ -172,13 +179,25 @@ public class ExcelImporter : AssetPostprocessor
 		var parts = SplitVectorParts(value);
 		if (parts.Length != 2)
 		{
-			throw new FormatException(string.Format("Invalid Vector2Int value '{0}'. Expected formats include {1}.", value, VectorFormatExamples));
+			throw CreateVectorFormatException("Vector2Int", value);
 		}
 
-		return new Vector2Int(
-			int.Parse(parts[0], CultureInfo.InvariantCulture),
-			int.Parse(parts[1], CultureInfo.InvariantCulture)
-		);
+		try
+		{
+			return new Vector2Int(
+				int.Parse(parts[0], CultureInfo.InvariantCulture),
+				int.Parse(parts[1], CultureInfo.InvariantCulture)
+			);
+		}
+		catch (FormatException)
+		{
+			throw CreateVectorFormatException("Vector2Int", value);
+		}
+	}
+
+	static FormatException CreateVectorFormatException(string vectorType, string value)
+	{
+		return new FormatException(string.Format("Invalid {0} value '{1}'. Expected formats include {2}.", vectorType, value, VectorFormatExamples));
 	}
 
 	static string[] SplitVectorParts(string value)
