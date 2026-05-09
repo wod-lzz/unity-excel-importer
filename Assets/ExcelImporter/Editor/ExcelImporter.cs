@@ -5,12 +5,15 @@ using UnityEditor;
 using System;
 using System.IO;
 using System.Reflection;
+using System.Globalization;
 using NPOI.HSSF.UserModel;
 using NPOI.XSSF.UserModel;
 using NPOI.SS.UserModel;
 
 public class ExcelImporter : AssetPostprocessor
 {
+	const string VectorFormatExamples = "1,2, 1|2, 1;2, 1 2, or (1, 2)";
+
 	class ExcelAssetInfo
 	{
 		public Type AssetType { get; set; }
@@ -124,8 +127,7 @@ public class ExcelImporter : AssetPostprocessor
 		switch (type)
 		{
 			case CellType.String:
-				if (fieldInfo.FieldType.IsEnum) return Enum.Parse(fieldInfo.FieldType, cell.StringCellValue);
-				else return cell.StringCellValue;
+				return StringToFieldObject(cell.StringCellValue, fieldInfo.FieldType);
 			case CellType.Boolean:
 				return cell.BooleanCellValue;
 			case CellType.Numeric:
@@ -140,6 +142,77 @@ public class ExcelImporter : AssetPostprocessor
 				}
 				return null;
 		}
+	}
+
+	static object StringToFieldObject(string value, Type fieldType)
+	{
+		if (fieldType.IsEnum) return Enum.Parse(fieldType, value);
+		if (fieldType == typeof(string)) return value;
+		if (fieldType == typeof(Vector2)) return ParseVector2(value);
+		if (fieldType == typeof(Vector2Int)) return ParseVector2Int(value);
+		return Convert.ChangeType(value, fieldType, CultureInfo.InvariantCulture);
+	}
+
+	static Vector2 ParseVector2(string value)
+	{
+		var parts = SplitVectorParts(value);
+		if (parts.Length != 2)
+		{
+			throw CreateVectorFormatException("Vector2", value);
+		}
+
+		try
+		{
+			return new Vector2(
+				float.Parse(parts[0], CultureInfo.InvariantCulture),
+				float.Parse(parts[1], CultureInfo.InvariantCulture)
+			);
+		}
+		catch (FormatException)
+		{
+			throw CreateVectorFormatException("Vector2", value);
+		}
+	}
+
+	static Vector2Int ParseVector2Int(string value)
+	{
+		var parts = SplitVectorParts(value);
+		if (parts.Length != 2)
+		{
+			throw CreateVectorFormatException("Vector2Int", value);
+		}
+
+		try
+		{
+			return new Vector2Int(
+				int.Parse(parts[0], CultureInfo.InvariantCulture),
+				int.Parse(parts[1], CultureInfo.InvariantCulture)
+			);
+		}
+		catch (FormatException)
+		{
+			throw CreateVectorFormatException("Vector2Int", value);
+		}
+	}
+
+	static FormatException CreateVectorFormatException(string vectorType, string value)
+	{
+		return new FormatException(string.Format("Invalid {0} value '{1}'. Expected formats include {2}.", vectorType, value, VectorFormatExamples));
+	}
+
+	static string[] SplitVectorParts(string value)
+	{
+		var parts = value
+			.Trim()
+			.Trim('(', ')')
+			.Split(new[] { ',', '|', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+		for (int i = 0; i < parts.Length; i++)
+		{
+			parts[i] = parts[i].Trim();
+		}
+
+		return parts;
 	}
 
 	static object CreateEntityFromRow(IRow row, List<string> columnNames, Type entityType, string sheetName)
