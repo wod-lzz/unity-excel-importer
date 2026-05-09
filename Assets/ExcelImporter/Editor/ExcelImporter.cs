@@ -12,6 +12,8 @@ using NPOI.SS.UserModel;
 
 public class ExcelImporter : AssetPostprocessor
 {
+	const string VectorFormatExamples = "1,2, 1|2, 1;2, 1 2, or (1, 2)";
+
 	class ExcelAssetInfo
 	{
 		public Type AssetType { get; set; }
@@ -156,7 +158,7 @@ public class ExcelImporter : AssetPostprocessor
 		var parts = SplitVectorParts(value);
 		if (parts.Length != 2)
 		{
-			throw new FormatException(string.Format("Invalid Vector2 value '{0}'. Expected format like '1,2'.", value));
+			throw new FormatException(string.Format("Invalid Vector2 value '{0}'. Expected formats include {1}.", value, VectorFormatExamples));
 		}
 
 		return new Vector2(
@@ -170,7 +172,7 @@ public class ExcelImporter : AssetPostprocessor
 		var parts = SplitVectorParts(value);
 		if (parts.Length != 2)
 		{
-			throw new FormatException(string.Format("Invalid Vector2Int value '{0}'. Expected format like '1,2'.", value));
+			throw new FormatException(string.Format("Invalid Vector2Int value '{0}'. Expected formats include {1}.", value, VectorFormatExamples));
 		}
 
 		return new Vector2Int(
