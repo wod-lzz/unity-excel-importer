@@ -202,10 +202,17 @@ public class ExcelImporter : AssetPostprocessor
 
 	static string[] SplitVectorParts(string value)
 	{
-		return value
+		var parts = value
 			.Trim()
 			.Trim('(', ')')
 			.Split(new[] { ',', '|', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+
+		for (int i = 0; i < parts.Length; i++)
+		{
+			parts[i] = parts[i].Trim();
+		}
+
+		return parts;
 	}
 
 	static object CreateEntityFromRow(IRow row, List<string> columnNames, Type entityType, string sheetName)
