@@ -5,6 +5,7 @@ using UnityEditor;
 using System;
 using System.IO;
 using System.Reflection;
+using System.Globalization;
 using NPOI.HSSF.UserModel;
 using NPOI.XSSF.UserModel;
 using NPOI.SS.UserModel;
@@ -124,8 +125,7 @@ public class ExcelImporter : AssetPostprocessor
 		switch (type)
 		{
 			case CellType.String:
-				if (fieldInfo.FieldType.IsEnum) return Enum.Parse(fieldInfo.FieldType, cell.StringCellValue);
-				else return cell.StringCellValue;
+				return StringToFieldObject(cell.StringCellValue, fieldInfo.FieldType);
 			case CellType.Boolean:
 				return cell.BooleanCellValue;
 			case CellType.Numeric:
@@ -140,6 +140,51 @@ public class ExcelImporter : AssetPostprocessor
 				}
 				return null;
 		}
+	}
+
+	static object StringToFieldObject(string value, Type fieldType)
+	{
+		if (fieldType.IsEnum) return Enum.Parse(fieldType, value);
+		if (fieldType == typeof(string)) return value;
+		if (fieldType == typeof(Vector2)) return ParseVector2(value);
+		if (fieldType == typeof(Vector2Int)) return ParseVector2Int(value);
+		return Convert.ChangeType(value, fieldType, CultureInfo.InvariantCulture);
+	}
+
+	static Vector2 ParseVector2(string value)
+	{
+		var parts = SplitVectorParts(value);
+		if (parts.Length != 2)
+		{
+			throw new FormatException(string.Format("Invalid Vector2 value '{0}'. Expected format like '1,2'.", value));
+		}
+
+		return new Vector2(
+			float.Parse(parts[0], CultureInfo.InvariantCulture),
+			float.Parse(parts[1], CultureInfo.InvariantCulture)
+		);
+	}
+
+	static Vector2Int ParseVector2Int(string value)
+	{
+		var parts = SplitVectorParts(value);
+		if (parts.Length != 2)
+		{
+			throw new FormatException(string.Format("Invalid Vector2Int value '{0}'. Expected format like '1,2'.", value));
+		}
+
+		return new Vector2Int(
+			int.Parse(parts[0], CultureInfo.InvariantCulture),
+			int.Parse(parts[1], CultureInfo.InvariantCulture)
+		);
+	}
+
+	static string[] SplitVectorParts(string value)
+	{
+		return value
+			.Trim()
+			.Trim('(', ')')
+			.Split(new[] { ',', '|', ';', ' ' }, StringSplitOptions.RemoveEmptyEntries);
 	}
 
 	static object CreateEntityFromRow(IRow row, List<string> columnNames, Type entityType, string sheetName)

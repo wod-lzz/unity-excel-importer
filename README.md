@@ -124,6 +124,21 @@ public class MstItems : ScriptableObject
 You can use enum by entering the element name as string in cell.
 It is also useful to set Data Validation pull down as an element of enum in Excel.
 
+### Use Vector2 / Vector2Int
+
+You can use `Vector2` and `Vector2Int` fields by entering two values in a single cell.
+
+Supported separators are `,`, `|`, `;`, and spaces. Parentheses around the value are also allowed.
+
+Examples:
+
+```text
+1,2
+(1, 2)
+1|2
+1;2
+```
+
 ### Log On Import
 
 When true is specified for LogOnImport of ExcelAssetAttribute, a log is output when the import process runs.
